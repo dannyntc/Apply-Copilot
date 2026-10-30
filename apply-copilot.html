@@ -390,10 +390,19 @@
             <textarea id="workExperiences" class="resume-area" placeholder="Paste your work experience details from resume.md here"></textarea>
           </div>
           <div class="full">
-            <div id="educationFields"></div>
-            <div class="actions">
-              <button id="addEducationButton" class="secondary" type="button">Add education</button>
-            </div>
+            <label for="education">Education</label>
+            <textarea id="education" class="resume-area" placeholder="Paste all education entries from resume.md here"></textarea>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Skills</legend>
+        <p class="section-intro">Paste the Core Competencies &amp; Skills section you want used for the application’s skills field.</p>
+        <div class="grid">
+          <div class="full">
+            <label for="relevantSkills">Core Competencies &amp; Skills</label>
+            <textarea id="relevantSkills" class="resume-area" placeholder="Paste your Core Competencies &amp; Skills section here"></textarea>
           </div>
         </div>
       </fieldset>
@@ -413,18 +422,6 @@
         </div>
         <div class="privacy-note">These two reusable fields are stored only in this browser's local storage. They are not sent anywhere by this page.</div>
       </fieldset>
-
-      <fieldset>
-        <legend>Application-specific details</legend>
-        <p class="section-intro">Change this for each job application. It is not saved when you close or refresh the page.</p>
-        <div class="grid">
-          <div>
-            <label for="relevantSkills">Relevant skills / keywords</label>
-            <textarea id="relevantSkills" placeholder="Skills, tools, keywords, or requirements to prioritize for this role"></textarea>
-          </div>
-        </div>
-      </fieldset>
-
 
       <div class="actions">
         <button id="saveProfileButton" type="button">Save reusable profile</button>
@@ -451,12 +448,13 @@
 
   <script>
     const profileIds = ["portfolio", "linkedin"];
-    const resumeIds = ["workExperiences"];
+    const resumeIds = ["workExperiences", "education"];
     const applicationIds = ["relevantSkills"];
     const defaultEducation = [
-      "Bachelor of Social Sciences (Honours) Economics - Merit - Nanyang Technological University, Singapore (Aug 2019 - Jun 2023)",
-      "Diploma with Merit in Tourism and Resort Management - Singapore Polytechnic, Singapore (Apr 2012 - Apr 2015). Singapore polytechnic diploma; use Associate's degree as the closest equivalent for US-style education-level categories."
-    ];
+      "- FlexiMasters in Financial Technology - Nanyang Technological University, Singapore (Dec 2026 – Sep 2027). Use Master's degree as the closest equivalent in the education categories.",
+      "- Bachelor of Social Sciences (Honours) Economics - Merit - Nanyang Technological University, Singapore (Aug 2019 - Jun 2023)",
+      "- Diploma with Merit in Tourism and Resort Management - Singapore Polytechnic, Singapore (Apr 2012 - Apr 2015). Singapore polytechnic diploma; use Associate's degree as the closest equivalent for US-style education-level categories."
+    ].join("\n");
 
     const profileLabels = {
       portfolio: "Portfolio or personal website",
@@ -464,7 +462,7 @@
     };
 
     const applicationLabels = {
-      relevantSkills: "Relevant skills / keywords"
+      relevantSkills: "Core Competencies & Skills"
     };
 
     const storageKey = "jobApplicationPromptBuilder.profile.v2";
@@ -485,9 +483,6 @@
     const summary = document.getElementById("summary");
     const status = document.getElementById("status");
     const warning = document.getElementById("warning");
-    const educationFields = document.getElementById("educationFields");
-    const addEducationButton = document.getElementById("addEducationButton");
-    let nextEducationId = 1;
 
     function readValue(id) {
       return elements[id].value.trim();
@@ -506,66 +501,20 @@
       return lines.length ? ["### " + title, lines.join("\n")].join("\n") : "";
     }
 
-    function readEducationValues() {
-      return [...educationFields.querySelectorAll("textarea")]
-        .map(function (textarea) { return textarea.value.trim(); })
-        .filter(Boolean);
-    }
-
-    function addEducationField(value) {
-      const entry = document.createElement("div");
-      entry.className = "education-entry";
-
-      const textareaId = "education-" + nextEducationId++;
-      const label = document.createElement("label");
-      label.htmlFor = textareaId;
-      label.textContent = "Education";
-
-      const textarea = document.createElement("textarea");
-      textarea.id = textareaId;
-      textarea.className = "resume-area";
-      textarea.placeholder = "Paste an education entry from resume.md here";
-      textarea.value = value || "";
-      textarea.addEventListener("input", render);
-      textarea.addEventListener("change", render);
-
-      const actions = document.createElement("div");
-      actions.className = "actions";
-      const removeButton = document.createElement("button");
-      removeButton.type = "button";
-      removeButton.className = "danger";
-      removeButton.textContent = "Remove";
-      removeButton.addEventListener("click", function () {
-        entry.remove();
-        render();
-        status.textContent = "Education entry removed.";
-      });
-      actions.appendChild(removeButton);
-
-      entry.append(label, textarea, actions);
-      educationFields.appendChild(entry);
-    }
-
-    function resetEducation() {
-      educationFields.replaceChildren();
-      nextEducationId = 1;
-      defaultEducation.forEach(addEducationField);
-    }
-
     function buildPrompt() {
       const profileLines = readGroup(profileIds, profileLabels);
       const workExperiences = readValue("workExperiences");
-      const education = readEducationValues();
+      const education = readValue("education");
       const applicationLines = readGroup(applicationIds, applicationLabels);
       const suppliedSections = [
         sectionText("Profile links", profileLines),
         sectionText("Work experience", workExperiences ? [workExperiences] : []),
-        sectionText("Education", education),
+        sectionText("Education", education ? [education] : []),
         sectionText("Languages", [
           "English: Highest available proficiency, fluency, or mastery level.",
           "Mandarin: Highest available proficiency, fluency, or mastery level."
         ]),
-        sectionText("Application focus", applicationLines)
+        sectionText("Skills for the application page", applicationLines)
       ].filter(Boolean);
 
       return [
@@ -588,21 +537,29 @@
         "- Follow the supplied content literally. Do not add, infer, guess, summarize, paraphrase, normalize, correct, or improve any supplied fact.",
         "- Preserve supplied spelling, capitalization, punctuation, dates, names, qualification titles, URLs, order, and wording.",
         "- Fill fields with the relevant supplied wording as plain text; source formatting indicates structure only.",
-        "- For structured fields, select an exact match only. Use a different label or category only when it is explicitly authorized below.",
-        "- If a field has no exact match and no explicit mapping below, leave it blank or unchanged and flag it for my review.",
-        "- Every populated field must be traceable to a specific supplied value or explicit rule. Never use a nearby, plausible, or commonly equivalent value as a substitute.",
+        "- For structured fields other than skills fields, select an exact match only. Use a different label or category only when it is explicitly authorized below.",
+        "- For the application page's skills field, use an exact match when available. If the application uses different wording, a close equivalent is acceptable, including a common synonym, abbreviation, or equivalent label. Do not choose a merely related skill, and do not claim unsupported proficiency.",
+        "- If a non-skills field has no exact match and no explicit mapping below, leave it blank or unchanged and flag it for my review. If the skills field has no clear exact or close equivalent, leave the choice unchanged and flag it for my review.",
+        "- Every populated field must be traceable to a specific supplied value or explicit rule. For non-skills fields, never use a nearby, plausible, or commonly equivalent value as a substitute.",
         "",
         "## Explicit mappings and rules",
         "",
         "- For each supplied language instruction, follow the stated instruction exactly. Do not infer a more specific proficiency level or substitute another level.",
+        "- For the FlexiMasters in Financial Technology, retain the official qualification title in free-text fields. If an education-category field is available, select Master's degree or its equivalent as the closest category only because this mapping is explicitly authorized. Do not describe it as a US-awarded degree or claim formally evaluated equivalence. If the available categories are ambiguous, leave the field unchanged and flag it for review.",
         "- For the Singapore Polytechnic diploma, retain the official qualification title in free-text fields. If an education-level dropdown has no suitable Singapore polytechnic diploma option, select Associate's degree or its equivalent as the closest category only because this mapping is explicitly authorized. Do not describe it as a US-awarded degree or claim formally evaluated equivalence. If the available categories are ambiguous, leave the field unchanged and flag it for review.",
+        "- Use the supplied Core Competencies & Skills content to fill or verify the skills field on the application page. Preserve the supplied wording in free-text fields; for skill selectors or autocomplete choices, use the closest available exact or equivalent skill label.",
         "",
         "## Field instructions",
         "",
         "- Review all relevant empty and pre-filled fields.",
         "- Fill empty fields only when the supplied information supports an answer.",
         "- Verify pre-filled fields against the supplied information. Leave correct values unchanged and correct values only when the supplied information directly establishes a conflict.",
+        "- For the application page's skills field, map each supplied skill to the closest available option when the wording differs, then continue with the remaining skills. Flag any skill whose match is unclear.",
         "- Leave uncertain or ambiguous values unchanged and flag them for my review.",
+        "",
+        "## Permission scope",
+        "",
+        "Proceed with entering all supplied information into the current application, including autofilling empty fields and editing existing fields when supported by the supplied information. This authorizes ordinary field entry and editing. Do not upload files, send messages, accept declarations or terms, or submit the application. Ask for confirmation only before those excluded actions.",
         "",
         "## Action limits",
         "",
@@ -660,9 +617,7 @@
     function render() {
       const prompt = buildPrompt();
       const filledProfile = profileIds.filter(function (id) { return readValue(id); }).length;
-      const filledEducation = readEducationValues().length;
-      const educationFieldCount = educationFields.querySelectorAll("textarea").length;
-      const filledResume = resumeIds.filter(function (id) { return readValue(id); }).length + filledEducation;
+      const filledResume = resumeIds.filter(function (id) { return readValue(id); }).length;
       const filledApplication = applicationIds.filter(function (id) { return readValue(id); }).length;
 
       promptOutput.textContent = prompt;
@@ -670,7 +625,7 @@
       summary.innerHTML = [
         ["Mode", "Fill + verify"],
         ["Profile", filledProfile + " / " + profileIds.length + " fields"],
-        ["Application", (filledResume + filledApplication) + " / " + (resumeIds.length + educationFieldCount + applicationIds.length) + " fields"],
+        ["Application", (filledResume + filledApplication) + " / " + (resumeIds.length + applicationIds.length) + " fields"],
         ["Submission", "Never included"]
       ].map(function (item) {
         return "<div class=\"pill\"><span>" + item[0] + "</span>" + item[1] + "</div>";
@@ -682,12 +637,12 @@
     }
 
     function resetApplication() {
-      [...resumeIds, ...applicationIds].forEach(function (id) {
+      ["workExperiences", ...applicationIds].forEach(function (id) {
         elements[id].value = "";
       });
-      resetEducation();
+      elements.education.value = defaultEducation;
       render();
-      status.textContent = "Application-specific inputs reset. Your saved profile is unchanged.";
+      status.textContent = "Application inputs reset and education defaults restored. Your saved profile is unchanged.";
     }
 
     function clearProfile() {
@@ -748,11 +703,6 @@
       elements[id].addEventListener("change", render);
     });
 
-    addEducationButton.addEventListener("click", function () {
-      addEducationField("");
-      render();
-      status.textContent = "Blank education entry added.";
-    });
     document.getElementById("saveProfileButton").addEventListener("click", function () {
       const saved = saveProfile();
       render();
@@ -761,7 +711,7 @@
     document.getElementById("resetApplicationButton").addEventListener("click", resetApplication);
     document.getElementById("clearProfileButton").addEventListener("click", clearProfile);
 
-    resetEducation();
+    elements.education.value = defaultEducation;
     loadProfile();
     render();
   </script>
